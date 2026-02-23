@@ -128,6 +128,7 @@
         }
 
         input[type="text"],
+        input[type="number"],
         select,
         textarea {
             width: 100%;
@@ -142,11 +143,13 @@
         }
 
         input[type="text"]::placeholder,
+        input[type="number"]::placeholder,
         textarea::placeholder {
             color: #b0a79c;
         }
 
         input[type="text"]:focus,
+        input[type="number"]:focus,
         select:focus,
         textarea:focus {
             border-color: #d6a886;
@@ -395,6 +398,12 @@
                                 </select>
                             </div>
 
+                            <div class="field">
+                                <label for="rallyCount">これまでのラリー回数（任意）</label>
+                                <input type="number" id="rallyCount" name="rallyCount" min="0" step="1" placeholder="例：6" />
+                                <div class="hint">往復回数の目安（不明なら空欄でOK）。</div>
+                            </div>
+
                             <div class="field full">
                                 <label for="historySummary">これまでの文通の補足（任意）</label>
                                 <textarea id="historySummary" name="historySummary"
@@ -465,6 +474,7 @@
             const replyLanguage = document.getElementById("replyLanguage");
             const politeness = document.getElementById("politeness");
             const relationshipStage = document.getElementById("relationshipStage");
+            const rallyCount = document.getElementById("rallyCount");
             const historySummary = document.getElementById("historySummary");
             const latestLetter = document.getElementById("latestLetter");
 
@@ -520,6 +530,7 @@
                     replyLanguage: replyLanguage.value,
                     politeness: politeness.value,
                     relationshipStage: relationshipStage.value,
+                    rallyCount: rallyCount.value,
                     historySummary: historySummary.value,
                     latestLetter: latestLetter.value
                 };
@@ -535,6 +546,7 @@
                     replyLanguage.value = data.replyLanguage ?? "日本語";
                     politeness.value = data.politeness ?? "普通（丁寧だが砕けた）";
                     relationshipStage.value = data.relationshipStage ?? "探索期（1〜3通）";
+                    rallyCount.value = data.rallyCount ?? "";
                     historySummary.value = data.historySummary ?? "";
                     latestLetter.value = data.latestLetter ?? "";
                 } catch (e) {
@@ -548,6 +560,7 @@
                     replyLanguage: normalizeText(replyLanguage.value) || "日本語",
                     politeness: politeness.value,
                     relationshipStage: relationshipStage.value,
+                    rallyCount: normalizeText(rallyCount.value) || "未指定",
                     historySummary: normalizeText(historySummary.value) || "（補足なし）",
                     latestLetter: normalizeText(latestLetter.value)
                 };
@@ -573,6 +586,7 @@
 - 相手の出身国・地域: ${v.originRegion}
 - 手紙の丁寧さ（希望トーン）: ${v.politeness}
 - 関係の段階: ${v.relationshipStage}
+- これまでのラリー回数（往復の目安）: ${v.rallyCount}
 
 【トーン設計メモ】
 - 丁寧さガイド: ${politenessGuide}
@@ -590,7 +604,7 @@ LATEST_LETTER_END>>>
 
 【タスク】
 1. 最新の手紙内容から、相手が伝えたいこと・感情・話題の軸を整理する（内面的に分析）
-2. これまでの文通の補足と関係段階を踏まえ、返信の温度感を調整する
+2. これまでの文通の補足・ラリー回数・関係段階を踏まえ、返信の温度感を調整する
 3. 相手の話題に対して具体的に反応し、テンプレ感のない返信にする
 4. 相手が答えやすい質問を1〜3個入れる（質問攻めにならないように）
 5. 必要に応じてこちらの短い自己開示を入れ、会話の往復が続きやすい構成にする
@@ -702,6 +716,7 @@ LATEST_LETTER_END>>>
                 replyLanguage.value = "日本語";
                 politeness.value = "普通（丁寧だが砕けた）";
                 relationshipStage.value = "探索期（1〜3通）";
+                rallyCount.value = "";
 
                 output.value = "";
                 updateCharCount();
@@ -709,7 +724,7 @@ LATEST_LETTER_END>>>
                 localStorage.removeItem(STORAGE_KEY);
             });
 
-            [originRegion, replyLanguage, politeness, relationshipStage, historySummary, latestLetter].forEach(el => {
+            [originRegion, replyLanguage, politeness, relationshipStage, rallyCount, historySummary, latestLetter].forEach(el => {
                 el.addEventListener("input", saveForm);
                 el.addEventListener("change", saveForm);
             });
