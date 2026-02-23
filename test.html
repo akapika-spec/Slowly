@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Slowly返信プロンプト生成ツール</title>
+    <style>
+        :root {
+            --bg: #f4efe8;
+            --panel: #f7f3ed;
+            --line: #d8cfc3;
+            --line-strong: #c7bbac;
+            --text: #4b443c;
+            --muted: #8c8174;
+            --accent: #d76a93;
+            --accent-soft: #f9e7ef;
+            --btn: #b88a63;
+            --btn-text: #fff;
+            --btn-sub: #ece5db;
+            --shadow: 0 8px 24px rgba(60, 45, 30, 0.08);
+            --radius: 10px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN",
+                "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+            color: var(--text);
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0)),
+                var(--bg);
+            line-height: 1.5;
+        }
+
+        .app {
+            max-width: 980px;
+            margin: 24px auto;
+            padding: 0 16px 28px;
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 16px 18px 10px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0));
+        }
+
+        .title {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+
+        .subtitle {
+            margin: 6px 0 0;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .body {
+            padding: 14px 18px 18px;
+        }
+
+        .section {
+            margin-top: 8px;
+            padding-top: 6px;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 8px 0 14px;
+            font-size: 15px;
+            font-weight: 700;
+            color: #665c52;
+        }
+
+        .section-title .dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 0 3px rgba(215, 106, 147, 0.18);
+            flex-shrink: 0;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px 16px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .field.full {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-size: 13px;
+            color: #6b6258;
+            font-weight: 600;
+        }
+
+        .required::after {
+            content: " *";
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        input[type="text"],
+        select,
+        textarea {
+            width: 100%;
+            border: 1px solid var(--line);
+            background: #fffdfb;
+            color: var(--text);
+            border-radius: var(--radius);
+            padding: 10px 12px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color .15s, box-shadow .15s, background .15s;
+        }
+
+        input[type="text"]::placeholder,
+        textarea::placeholder {
+            color: #b0a79c;
+        }
+
+        input[type="text"]:focus,
+        select:focus,
+        textarea:focus {
+            border-color: #d6a886;
+            box-shadow: 0 0 0 4px rgba(214, 168, 134, 0.16);
+            background: #fff;
+        }
+
+        select {
+            appearance: auto;
+            cursor: pointer;
+            background: #fffdfb;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 96px;
+        }
+
+        #latestLetter {
+            min-height: 180px;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 3px;
+        }
+
+        .divider {
+            margin: 18px 0 14px;
+            border: none;
+            border-top: 1px solid var(--line);
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+            align-items: center;
+        }
+
+        button {
+            border: none;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform .04s ease, opacity .15s ease, filter .15s ease;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .btn-primary {
+            background: var(--btn);
+            color: var(--btn-text);
+            box-shadow: 0 4px 14px rgba(184, 138, 99, 0.22);
+        }
+
+        .btn-secondary {
+            background: var(--btn-sub);
+            color: #584d42;
+            border: 1px solid var(--line);
+        }
+
+        .btn-danger {
+            background: #f2e3e0;
+            color: #8a4f46;
+            border: 1px solid #e4c7c2;
+        }
+
+        .status {
+            min-height: 20px;
+            font-size: 13px;
+            color: #6b6258;
+            margin-top: 8px;
+        }
+
+        .status.error {
+            color: #b24848;
+            font-weight: 600;
+        }
+
+        .output-wrap {
+            margin-top: 16px;
+            background: rgba(255, 255, 255, 0.55);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 12px;
+        }
+
+        .output-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .output-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #62584d;
+            margin: 0;
+        }
+
+        .count {
+            font-size: 12px;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        #generatedPrompt {
+            width: 100%;
+            min-height: 280px;
+            resize: vertical;
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 13px;
+            line-height: 1.65;
+            color: #413930;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+        }
+
+        details.help {
+            margin-top: 12px;
+            background: #fffaf5;
+            border: 1px solid #eadfce;
+            border-radius: 10px;
+            padding: 8px 10px;
+        }
+
+        details.help summary {
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+            color: #6c5f50;
+            outline: none;
+        }
+
+        .help-body {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #6f655a;
+        }
+
+        .pill-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .pill {
+            font-size: 11px;
+            color: #6f6357;
+            background: #f3ebe0;
+            border: 1px solid #e4d8c8;
+            border-radius: 999px;
+            padding: 4px 8px;
+        }
+
+        @media (max-width: 700px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .app {
+                margin-top: 12px;
+            }
+
+            .header {
+                padding: 14px 14px 10px;
+            }
+
+            .body {
+                padding: 12px 14px 16px;
+            }
+
+            .toolbar {
+                gap: 8px;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            .output-head {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <div class="card">
+            <div class="header">
+                <h1 class="title">Slowly返信プロンプト生成ツール</h1>
+                <p class="subtitle">
+                    文通相手の情報と最新の手紙内容を入力すると、カスタムGPTへ渡すためのプロンプトを生成します（ローカル動作）。
+                </p>
+            </div>
+
+            <div class="body">
+                <form id="promptForm">
+                    <div class="section">
+                        <div class="section-title">
+                            <span class="dot" aria-hidden="true"></span>
+                            <span>相手の情報</span>
+                        </div>
+
+                        <div class="grid-2">
+                            <div class="field">
+                                <label for="originRegion">出身国・地域</label>
+                                <input type="text" id="originRegion" name="originRegion" placeholder="例：ブラジル、インド" />
+                            </div>
+
+                            <div class="field">
+                                <label for="replyLanguage">返信に使う言語</label>
+                                <input type="text" id="replyLanguage" name="replyLanguage" placeholder="例：日本語 / 英語"
+                                    value="日本語" />
+                            </div>
+
+                            <div class="field">
+                                <label for="politeness">手紙の丁寧さ</label>
+                                <select id="politeness" name="politeness">
+                                    <option value="カジュアル（友達っぽい）">カジュアル（友達っぽい）</option>
+                                    <option value="普通（丁寧だが砕けた）" selected>普通（丁寧だが砕けた）</option>
+                                    <option value="フォーマル（礼儀正しい）">フォーマル（礼儀正しい）</option>
+                                </select>
+                            </div>
+
+                            <div class="field">
+                                <label for="relationshipStage">関係の段階</label>
+                                <select id="relationshipStage" name="relationshipStage">
+                                    <option value="探索期（1〜3通）" selected>探索期（1〜3通）</option>
+                                    <option value="信頼構築期（4〜8通）">信頼構築期（4〜8通）</option>
+                                    <option value="深化期（9通以上）">深化期（9通以上）</option>
+                                </select>
+                            </div>
+
+                            <div class="field full">
+                                <label for="historySummary">これまでの文通の補足（任意）</label>
+                                <textarea id="historySummary" name="historySummary"
+                                    placeholder="共通の話題、相手が話してくれたこと、以前のやりとりで印象的だったことなど"></textarea>
+                                <div class="hint">空欄でもOK。書くほどプロンプトの精度が上がります。</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="divider" />
+
+                    <div class="section">
+                        <div class="section-title">
+                            <span class="dot" aria-hidden="true"></span>
+                            <span>相手から届いた手紙</span>
+                        </div>
+
+                        <div class="field">
+                            <label for="latestLetter" class="required">相手から届いた手紙</label>
+                            <textarea id="latestLetter" name="latestLetter" placeholder="相手から届いた手紙の内容をここに貼り付けてください…"
+                                required></textarea>
+                            <div class="hint">最新の1通をそのまま貼り付けてください（改行・絵文字もそのままでOK）。</div>
+                        </div>
+
+                        <div class="toolbar">
+                            <button type="button" class="btn-primary" id="generateBtn">プロンプトを生成</button>
+                            <button type="button" class="btn-secondary" id="copyBtn">生成結果をコピー</button>
+                            <button type="button" class="btn-secondary" id="downloadBtn">.txtで保存</button>
+                            <button type="button" class="btn-danger" id="clearBtn">入力をクリア</button>
+                        </div>
+
+                        <div id="status" class="status" aria-live="polite"></div>
+
+                        <div class="output-wrap">
+                            <div class="output-head">
+                                <p class="output-title">生成されたプロンプト（カスタムGPT入力用）</p>
+                                <div class="count" id="charCount">0 文字</div>
+                            </div>
+                            <textarea id="generatedPrompt" readonly placeholder="ここにプロンプトが生成されます。"></textarea>
+                        </div>
+
+                        <details class="help">
+                            <summary>このアプリで生成されるプロンプトの方針</summary>
+                            <div class="help-body">
+                                相手の文化・口調・関係段階・過去のやりとり要約・最新の手紙内容をまとめてカスタムGPTに渡せる形式に整形します。
+                                出力指示には「表面的でない返信」「自然な質問」「相手が返信しやすい文面」などを含めています。
+                                <div class="pill-row">
+                                    <span class="pill">文化配慮</span>
+                                    <span class="pill">関係段階に応じた温度感</span>
+                                    <span class="pill">質問の質</span>
+                                    <span class="pill">返信しやすさ</span>
+                                    <span class="pill">自然な口調</span>
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const STORAGE_KEY = "slowly_prompt_builder_v1";
+
+            const form = document.getElementById("promptForm");
+            const originRegion = document.getElementById("originRegion");
+            const replyLanguage = document.getElementById("replyLanguage");
+            const politeness = document.getElementById("politeness");
+            const relationshipStage = document.getElementById("relationshipStage");
+            const historySummary = document.getElementById("historySummary");
+            const latestLetter = document.getElementById("latestLetter");
+
+            const generateBtn = document.getElementById("generateBtn");
+            const copyBtn = document.getElementById("copyBtn");
+            const downloadBtn = document.getElementById("downloadBtn");
+            const clearBtn = document.getElementById("clearBtn");
+
+            const output = document.getElementById("generatedPrompt");
+            const statusEl = document.getElementById("status");
+            const charCount = document.getElementById("charCount");
+
+            const politenessGuideMap = {
+                "カジュアル（友達っぽい）":
+                    "親しみやすく自然体。くだけすぎず、文通相手が読みやすい柔らかい表現を優先。",
+                "普通（丁寧だが砕けた）":
+                    "丁寧さを保ちつつ親しみも感じるトーン。Slowlyで一般的に使いやすいバランス。",
+                "フォーマル（礼儀正しい）":
+                    "礼儀正しく落ち着いた文体。過度に硬すぎない範囲で敬意を明確にする。"
+            };
+
+            const relationshipGuideMap = {
+                "探索期（1〜3通）":
+                    "相手を知るための自然な質問を中心に。踏み込みすぎず、話題の広がりを意識。",
+                "信頼構築期（4〜8通）":
+                    "過去の会話に触れて連続性を出す。共通点や価値観の掘り下げを少し進める。",
+                "深化期（9通以上）":
+                    "相手の個性・過去の話題を丁寧に回収しつつ、より深いテーマや近況共有に展開。"
+            };
+
+            function normalizeText(str) {
+                return (str || "").replace(/\r\n/g, "\n").trim();
+            }
+
+            function safeBlock(str) {
+                // 区切りトークンと衝突しにくいように軽く変換
+                return (str || "").replace(/<<<|>>>/g, "");
+            }
+
+            function setStatus(message, isError = false) {
+                statusEl.textContent = message || "";
+                statusEl.classList.toggle("error", !!isError);
+            }
+
+            function updateCharCount() {
+                const count = output.value.length;
+                charCount.textContent = `${count.toLocaleString("ja-JP")} 文字`;
+            }
+
+            function saveForm() {
+                const data = {
+                    originRegion: originRegion.value,
+                    replyLanguage: replyLanguage.value,
+                    politeness: politeness.value,
+                    relationshipStage: relationshipStage.value,
+                    historySummary: historySummary.value,
+                    latestLetter: latestLetter.value
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            }
+
+            function loadForm() {
+                try {
+                    const raw = localStorage.getItem(STORAGE_KEY);
+                    if (!raw) return;
+                    const data = JSON.parse(raw);
+                    originRegion.value = data.originRegion ?? "";
+                    replyLanguage.value = data.replyLanguage ?? "日本語";
+                    politeness.value = data.politeness ?? "普通（丁寧だが砕けた）";
+                    relationshipStage.value = data.relationshipStage ?? "探索期（1〜3通）";
+                    historySummary.value = data.historySummary ?? "";
+                    latestLetter.value = data.latestLetter ?? "";
+                } catch (e) {
+                    console.warn("localStorageの読み込みに失敗:", e);
+                }
+            }
+
+            function buildPrompt() {
+                const v = {
+                    originRegion: normalizeText(originRegion.value) || "未指定",
+                    replyLanguage: normalizeText(replyLanguage.value) || "日本語",
+                    politeness: politeness.value,
+                    relationshipStage: relationshipStage.value,
+                    historySummary: normalizeText(historySummary.value) || "（補足なし）",
+                    latestLetter: normalizeText(latestLetter.value)
+                };
+
+                const politenessGuide = politenessGuideMap[v.politeness] || "";
+                const relationshipGuide = relationshipGuideMap[v.relationshipStage] || "";
+
+                const prompt = `あなたは、文通アプリ「Slowly」の返信作成を支援するアシスタントです。
+以下の入力情報をもとに、相手の国・文化・文体・関係性の段階を踏まえた、自然で実りのある返信文を作成してください。
+
+【重要な方針】
+- 表面的なやり取りで終わらないようにする
+- 相手を深く知れる自然な質問を入れる
+- 相手がこちらに質問しやすい余白を作る
+- 相手の話題に対して、共感・具体的反応・自己開示のバランスを取る
+- 断定的・説教的・過度に馴れ馴れしい表現は避ける
+- 文化差や言語ニュアンスに配慮しつつ、読みやすさを優先する
+
+【返信文の言語】
+- 必ず「${v.replyLanguage}」で返信文を作成すること
+
+【入力情報（ユーザー設定）】
+- 相手の出身国・地域: ${v.originRegion}
+- 手紙の丁寧さ（希望トーン）: ${v.politeness}
+- 関係の段階: ${v.relationshipStage}
+
+【トーン設計メモ】
+- 丁寧さガイド: ${politenessGuide}
+- 関係段階ガイド: ${relationshipGuide}
+
+【これまでの文通の補足（任意）】
+<<<HISTORY_SUMMARY_START
+${safeBlock(v.historySummary)}
+HISTORY_SUMMARY_END>>>
+
+【相手から届いた最新の手紙（原文）】
+<<<LATEST_LETTER_START
+${safeBlock(v.latestLetter)}
+LATEST_LETTER_END>>>
+
+【タスク】
+1. 最新の手紙内容から、相手が伝えたいこと・感情・話題の軸を整理する（内面的に分析）
+2. これまでの文通の補足と関係段階を踏まえ、返信の温度感を調整する
+3. 相手の話題に対して具体的に反応し、テンプレ感のない返信にする
+4. 相手が答えやすい質問を1〜3個入れる（質問攻めにならないように）
+5. 必要に応じてこちらの短い自己開示を入れ、会話の往復が続きやすい構成にする
+6. Slowlyの手紙らしく、読みやすい段落構成にする（長すぎる一文を避ける）
+
+【出力形式】
+以下の形式で出力してください。
+
+### 返信文案
+（そのまま送れる自然な文面）
+
+### 返信の意図・設計メモ（短く）
+- 相手のどの話題にどう反応したか
+- なぜその質問にしたか
+- トーン調整のポイント
+
+### 予備の質問案（任意）
+- 返信文に入れ替え可能な質問を2〜3個
+
+【補足】
+- 相手の国や文化について推測が必要な場合は、決めつけずに安全な表現にする
+- 返信文に不自然な説明口調やAIっぽさを出さない
+- 絵文字は、相手の文体や関係段階に合う場合のみ最小限で使う`;
+
+                return prompt;
+            }
+
+            async function copyToClipboard(text) {
+                if (!text) return false;
+                try {
+                    await navigator.clipboard.writeText(text);
+                    return true;
+                } catch (e) {
+                    // fallback
+                    output.focus();
+                    output.select();
+                    const ok = document.execCommand("copy");
+                    window.getSelection()?.removeAllRanges?.();
+                    return !!ok;
+                }
+            }
+
+            function downloadTextFile(filename, text) {
+                const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            }
+
+            function generate() {
+                setStatus("");
+                const latest = normalizeText(latestLetter.value);
+
+                if (!latest) {
+                    setStatus("「相手から届いた手紙」は必須です。内容を貼り付けてください。", true);
+                    latestLetter.focus();
+                    return;
+                }
+
+                const prompt = buildPrompt();
+                output.value = prompt;
+                updateCharCount();
+                setStatus("プロンプトを生成しました。必要に応じてコピーしてカスタムGPTに貼り付けてください。");
+            }
+
+            generateBtn.addEventListener("click", generate);
+
+            copyBtn.addEventListener("click", async () => {
+                const text = output.value.trim();
+                if (!text) {
+                    setStatus("先にプロンプトを生成してください。", true);
+                    return;
+                }
+                const ok = await copyToClipboard(text);
+                if (ok) {
+                    setStatus("生成されたプロンプトをコピーしました。");
+                } else {
+                    setStatus("コピーに失敗しました。出力欄を手動で選択してコピーしてください。", true);
+                }
+            });
+
+            downloadBtn.addEventListener("click", () => {
+                const text = output.value.trim();
+                if (!text) {
+                    setStatus("先にプロンプトを生成してください。", true);
+                    return;
+                }
+                const now = new Date();
+                const y = now.getFullYear();
+                const m = String(now.getMonth() + 1).padStart(2, "0");
+                const d = String(now.getDate()).padStart(2, "0");
+                const hh = String(now.getHours()).padStart(2, "0");
+                const mm = String(now.getMinutes()).padStart(2, "0");
+                const filename = `slowly_prompt_${y}${m}${d}_${hh}${mm}.txt`;
+                downloadTextFile(filename, text);
+                setStatus(`プロンプトを ${filename} として保存しました。`);
+            });
+
+            clearBtn.addEventListener("click", () => {
+                const ok = confirm("入力内容と生成結果をクリアします。よろしいですか？");
+                if (!ok) return;
+
+                form.reset();
+                replyLanguage.value = "日本語";
+                politeness.value = "普通（丁寧だが砕けた）";
+                relationshipStage.value = "探索期（1〜3通）";
+
+                output.value = "";
+                updateCharCount();
+                setStatus("入力内容をクリアしました。");
+                localStorage.removeItem(STORAGE_KEY);
+            });
+
+            [originRegion, replyLanguage, politeness, relationshipStage, historySummary, latestLetter].forEach(el => {
+                el.addEventListener("input", saveForm);
+                el.addEventListener("change", saveForm);
+            });
+
+            output.addEventListener("input", updateCharCount);
+
+            // 初期化
+            loadForm();
+            updateCharCount();
+        })();
+    </script>
+</body>
+
+</html>
